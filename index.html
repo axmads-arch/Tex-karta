@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tex karta</title>
+<style>
+:root{--bg:#faf6f0;--card:#fff;--tx:#2b2118;--mut:#85766a;--ac:#8a4b24;--acx:#fff;--ok:#2e7d4f;--bad:#b3392f;--bd:#e6dccf;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1511;--card:#271e18;--tx:#f1e7dc;--mut:#a8998b;--ac:#d98c58;--acx:#1b1511;--ok:#6cc08c;--bad:#ef7b70;--bd:#3b2f26;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:720px;margin:0 auto;padding:12px 14px 40px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+h1{font-size:20px;margin:0}
+h2{font-size:18px;margin:0 0 4px}
+nav{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto}
+button{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:9px 14px;border-radius:10px;cursor:pointer}
+button.p{background:var(--ac);color:var(--acx);border-color:var(--ac)}
+button.on{background:var(--ac);color:var(--acx);border-color:var(--ac)}
+button.d{color:var(--bad)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sp{justify-content:space-between}
+.mut{color:var(--mut);font-size:14px}
+.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}
+input,select,textarea{font:inherit;width:100%;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
+label{display:block;font-size:13px;color:var(--mut);margin:8px 0 3px}
+.g{display:grid;gap:8px;grid-template-columns:1fr 1fr}
+.ir{display:grid;grid-template-columns:1fr 90px 40px;gap:6px;margin-bottom:6px}
+table{width:100%;border-collapse:collapse}
+td{padding:6px 0;border-bottom:1px solid var(--bd)}
+td:last-child{text-align:right}
+ol{padding-left:20px;margin:6px 0}
+li{margin-bottom:6px}
+.pill{display:inline-block;padding:2px 8px;border-radius:99px;background:var(--bg);border:1px solid var(--bd);font-size:13px}
+@media print{header,nav,.noprint{display:none!important}body{background:#fff;color:#000}.card{border:none}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>☕ Tex karta</h1><button id="mode"></button></header>
+<nav id="nav"></nav>
+<div id="app"></div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+const seed=()=>({ings:[
+{id:'i1',name:'Kofe donasi',unit:'g',price:180000,qty:1000},
+{id:'i2',name:'Sut',unit:'ml',price:12000,qty:1000},
+{id:'i3',name:'Vanil sirop',unit:'ml',price:90000,qty:1000},
+{id:'i4',name:'Stakan 250 ml + qopqoq',unit:'dona',price:1200,qty:1}],
+recipes:[
+{id:'r1',name:'Americano',vol:'250 ml',price:18000,cup:'Stakan 250 ml, qopqoq',steps:'Portafilterga 18 g kofe soling\nEspresso torting (25–30 soniya, ~36 g)\nStakanga 200 ml issiq suv quying\nEspressoni ustidan qo‘shing',items:[{ing:'i1',amt:18},{ing:'i4',amt:1}]},
+{id:'r2',name:'Latte',vol:'250 ml',price:24000,cup:'Stakan 250 ml, qopqoq',steps:'Dubl espresso torting\nSutni 60–65°C gacha ko‘pirtiring\nEspressoga sutni quying',items:[{ing:'i1',amt:18},{ing:'i2',amt:180},{ing:'i4',amt:1}]}]});
+function load(){try{const r=localStorage.getItem('texkarta_v1');if(r)return JSON.parse(r)}catch(e){}return seed()}
+function save(){try{localStorage.setItem('texkarta_v1',JSON.stringify(S))}catch(e){}}
+let S=load(),owner=true,tab='cards',view=null,D=null;
+const ing=id=>S.ings.find(i=>i.id===id);
+const uc=i=>i&&i.qty?i.price/i.qty:0;
+const cost=r=>r.items.reduce((a,x)=>a+x.amt*uc(ing(x.ing)),0);
+const money=n=>Math.round(n).toLocaleString('ru-RU')+' so‘m';
+const margin=r=>r.price>0?(r.price-cost(r))/r.price*100:0;
+
+function render(){
+  $('#mode').textContent=owner?'👤 Egasi':'🧑‍🍳 Barista';
+  $('#mode').onclick=()=>{owner=!owner;if(!owner&&tab!=='cards')tab='cards';D=null;render()};
+  const tabs=owner?[['cards','Tex kartalar'],['ings','Ingredientlar'],['bk','Zaxira']]:[['cards','Tex kartalar']];
+  $('#nav').innerHTML=tabs.map(([k,t])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';view=null;D=null;render()">${t}</button>`).join('');
+  $('#app').innerHTML=D?editView():view?detailView():tab==='cards'?listView():tab==='ings'?ingView():bkView();
+}
+function listView(){
+  const q=window._q||'';
+  const rs=S.recipes.filter(r=>r.name.toLowerCase().includes(q.toLowerCase()));
+  return `<div class="row noprint" style="margin-bottom:10px"><input placeholder="Qidirish…" value="${esc(q)}" oninput="window._q=this.value;render();this.focus()" style="flex:1">${owner?'<button class="p" onclick="newR()">+ Yangi</button>':''}</div>`+
+  (rs.map(r=>`<div class="card" onclick="view='${r.id}';render()" style="cursor:pointer"><div class="row sp"><h2>${esc(r.name)}</h2><span class="pill">${esc(r.vol)}</span></div>${owner?`<div class="row sp mut"><span>Tannarx: ${money(cost(r))}</span><span>Narx: ${money(r.price)}</span><span class="${margin(r)>=60?'ok':margin(r)>=40?'':'bad'}">${margin(r).toFixed(0)}%</span></div>`:`<div class="mut">${r.items.length} ta ingredient</div>`}</div>`).join('')||'<p class="mut">Hozircha tex karta yo‘q.</p>');
+}
+function detailView(){
+  const r=S.recipes.find(x=>x.id===view);if(!r){view=null;return listView()}
+  const c=cost(r);
+  return `<div class="row noprint" style="margin-bottom:10px"><button onclick="view=null;render()">← Orqaga</button>${owner?`<button onclick="editR('${r.id}')">Tahrirlash</button>`:''}<button onclick="window.print()">Chop etish</button></div>
+  <div class="card"><div class="row sp"><h2>${esc(r.name)}</h2><span class="pill">${esc(r.vol)}</span></div>
+  <table>${r.items.map(x=>{const i=ing(x.ing);return i?`<tr><td>${esc(i.name)}</td><td>${x.amt} ${esc(i.unit)}</td>${owner?`<td class="mut">${money(x.amt*uc(i))}</td>`:''}</tr>`:''}).join('')}</table>
+  ${r.cup?`<label>Idish va bezak</label><div>${esc(r.cup)}</div>`:''}
+  <label>Tayyorlash tartibi</label><ol>${r.steps.split('\n').filter(s=>s.trim()).map(s=>`<li>${esc(s)}</li>`).join('')}</ol></div>
+  ${owner?`<div class="card"><div class="row sp"><span>Tannarx</span><b>${money(c)}</b></div><div class="row sp"><span>Sotuv narxi</span><b>${money(r.price)}</b></div><div class="row sp"><span>Foyda</span><b>${money(r.price-c)}</b></div><div class="row sp"><span>Marja</span><b class="${margin(r)>=60?'ok':margin(r)>=40?'':'bad'}">${margin(r).toFixed(1)}%</b></div></div>`:''}`;
+}
+function newR(){D={id:uid(),name:'',vol:'',price:0,cup:'',steps:'',items:[],isNew:true};render()}
+function editR(id){D=JSON.parse(JSON.stringify(S.recipes.find(r=>r.id===id)));render()}
+function editView(){
+  const opts=sel=>S.ings.map(i=>`<option value="${i.id}" ${i.id===sel?'selected':''}>${esc(i.name)} (${esc(i.unit)})</option>`).join('');
+  return `<div class="card"><h2>${D.isNew?'Yangi tex karta':'Tahrirlash'}</h2>
+  <label>Nomi</label><input value="${esc(D.name)}" oninput="D.name=this.value">
+  <div class="g"><div><label>Hajmi</label><input value="${esc(D.vol)}" placeholder="250 ml" oninput="D.vol=this.value"></div>
+  <div><label>Sotuv narxi (so‘m)</label><input type="number" inputmode="numeric" value="${D.price}" oninput="D.price=+this.value"></div></div>
+  <label>Ingredientlar</label>
+  ${D.items.map((x,n)=>`<div class="ir"><select onchange="D.items[${n}].ing=this.value">${opts(x.ing)}</select><input type="number" inputmode="decimal" value="${x.amt}" oninput="D.items[${n}].amt=+this.value"><button class="d" onclick="D.items.splice(${n},1);render()">✕</button></div>`).join('')}
+  <button onclick="if(!S.ings.length)return alert('Avval ingredient qo‘shing');D.items.push({ing:S.ings[0].id,amt:0});render()">+ Ingredient</button>
+  <label>Idish va bezak</label><input value="${esc(D.cup)}" oninput="D.cup=this.value">
+  <label>Tayyorlash tartibi (har qator — bir qadam)</label><textarea rows="6" oninput="D.steps=this.value">${esc(D.steps)}</textarea>
+  <div class="row" style="margin-top:12px"><button class="p" onclick="saveR()">Saqlash</button><button onclick="D=null;render()">Bekor</button>${D.isNew?'':`<button class="d" onclick="delR()">O‘chirish</button>`}</div></div>`;
+}
+function saveR(){
+  if(!D.name.trim())return alert('Nomini kiriting');
+  const {isNew,...r}=D;const n=S.recipes.findIndex(x=>x.id===r.id);
+  n>=0?S.recipes[n]=r:S.recipes.push(r);save();view=r.id;D=null;render();
+}
+function delR(){if(confirm('O‘chirilsinmi?')){S.recipes=S.recipes.filter(r=>r.id!==D.id);save();D=null;view=null;render()}}
+function ingView(){
+  return `<div class="card"><h2>Ingredientlar</h2><p class="mut">Qadoq narxi va miqdorini kiriting. Narxni o‘zgartirsangiz, barcha tannarx o‘zi qayta hisoblanadi.</p>
+  ${S.ings.map((i,n)=>`<div style="border-top:1px solid var(--bd);padding:8px 0"><input value="${esc(i.name)}" oninput="S.ings[${n}].name=this.value;save()">
+  <div class="g" style="grid-template-columns:1fr 1fr 80px;margin-top:6px"><div><label>Qadoq narxi</label><input type="number" inputmode="numeric" value="${i.price}" oninput="S.ings[${n}].price=+this.value;save();upd(${n})"></div>
+  <div><label>Qadoq miqdori</label><input type="number" inputmode="decimal" value="${i.qty}" oninput="S.ings[${n}].qty=+this.value;save();upd(${n})"></div>
+  <div><label>Birlik</label><select onchange="S.ings[${n}].unit=this.value;save();render()">${['g','ml','dona'].map(u=>`<option ${u===i.unit?'selected':''}>${u}</option>`).join('')}</select></div></div>
+  <div class="row sp"><span class="mut" id="u${n}">1 ${esc(i.unit)} = ${uc(i).toFixed(2)} so‘m</span><button class="d" onclick="delI(${n})">O‘chirish</button></div></div>`).join('')}
+  <button class="p" onclick="S.ings.push({id:uid(),name:'Yangi',unit:'g',price:0,qty:1000});save();render()">+ Ingredient</button></div>`;
+}
+function upd(n){const i=S.ings[n];$('#u'+n).textContent=`1 ${i.unit} = ${uc(i).toFixed(2)} so‘m`}
+function delI(n){const i=S.ings[n];if(S.recipes.some(r=>r.items.some(x=>x.ing===i.id)))return alert('Bu ingredient tex kartalarda ishlatilgan');if(confirm('O‘chirilsinmi?')){S.ings.splice(n,1);save();render()}}
+function bkView(){
+  return `<div class="card"><h2>Zaxira nusxa</h2><p class="mut">Matnni nusxalab saqlab qo‘ying. Tiklash uchun shu yerga qo‘yib, “Tiklash”ni bosing.</p>
+  <textarea id="bk" rows="10">${esc(JSON.stringify(S))}</textarea>
+  <div class="row" style="margin-top:10px"><button class="p" onclick="try{navigator.clipboard.writeText($('#bk').value);alert('Nusxalandi')}catch(e){$('#bk').select()}">Nusxalash</button><button onclick="restore()">Tiklash</button></div></div>`;
+}
+function restore(){try{const d=JSON.parse($('#bk').value);if(!Array.isArray(d.ings)||!Array.isArray(d.recipes))throw 0;S=d;save();alert('Tiklandi');tab='cards';render()}catch(e){alert('Noto‘g‘ri format')}}
+render();
+</script>
+</body>
+</html>
